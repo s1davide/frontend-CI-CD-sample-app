@@ -1,0 +1,82 @@
+name: Cloud Formation Templates Validation
+
+on:
+  push:
+    branches:
+      - main
+jobs:
+  deploy-on-push-main:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Install Node v16
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+      - name: Run unitary Tests
+        run: npm ci && npm run test:ci
+            
+      - name: Deploy to server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST}}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |         
+              echo Initializing deploy   
+                REPOSITORY_URL_FRONTEND=$(echo "${{github.repositoryUrl}}" | sed s#git://#https://${{secrets.GH_TOKEN}}@#)  
+                FILE_START_APP_FRONTEND=$HOME/start_frontend.sh
+                FILE_SET_ENV_VAR_FRONTEND=$HOME/frontend_env.sh
+              rm -f $FILE_START_APP_FRONTEND
+              rm -f $FILE_SET_ENV_VAR_FRONTEND
+              source $HOME/.profile
+              echo 'export BACKEND_ENDPOINT=${{secrets.BACKEND_ENDPOINT}}'>> $FILE_SET_ENV_VAR_FRONTEND
+              
+              echo Creating pm2 ecosystem file
+              rm $HOME/${{secrets.APP_NAME}}.config.js
+              echo '
+              module.exports = {
+                apps: [
+                    {
+                      name: "${{secrets.APP_NAME}}",
+                      cwd: "./${{secrets.APP_NAME}}",
+                      script: "npm",
+                      args: "start -- -p 3000",
+                      max_memory_restart: "1G",
+                    }
+                  ],
+                };
+              ' >> $HOME/${{secrets.APP_NAME}}.config.js
+
+              echo Creating script to initialize app
+              echo 'pm2 describe ${{secrets.APP_NAME}} > /dev/null
+              not_exists=$?
+              if [ "${not_exists}" -ne 0 ]; then                      
+                pm2 start $HOME/${{secrets.APP_NAME}}.config.js   
+                pm2 save              
+              else
+                pm2 restart ${{secrets.APP_NAME}}              
+              fi' >> $FILE_START_APP_FRONTEND        
+              
+              chmod +x $FILE_START_APP_FRONTEND
+              chmod +x $FILE_SET_ENV_VAR_FRONTEND
+              if [ $(cat $HOME/.profile | grep -c "source $FILE_SET_ENV_VAR_FRONTEND") -eq 0 ]; then
+                echo "source $FILE_SET_ENV_VAR_FRONTEND" >> $HOME/.profile
+              fi
+              if [ $(cat $HOME/.profile | grep -c "source $FILE_START_APP_FRONTEND") -eq 0 ]; then
+                echo "source $FILE_START_APP_FRONTEND" >> $HOME/.profile  
+              fi
+              if [[ ! -e ${{ secrets.FOLDER_PROJECT }} ]]; then
+                git clone $REPOSITORY_URL_FRONTEND ${{ secrets.FOLDER_PROJECT }}          
+              else                         
+                git -C $HOME/${{ secrets.FOLDER_PROJECT }}  pull $REPOSITORY_URL_FRONTEND
+              fi
+              REPOSITORY_URL_FRONTEND=""
+              npm --prefix $HOME/${{ secrets.FOLDER_PROJECT }} ci
+              source $FILE_SET_ENV_VAR_FRONTEND
+              npm --prefix $HOME/${{ secrets.FOLDER_PROJECT }} run build
+              source $FILE_START_APP_FRONTEND
+              
