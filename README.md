@@ -27,13 +27,13 @@ Run tests to ensure the code passes all the required checks.
 Deploy the application to the server.
 To ensure successful deployment, make sure you have the following secrets set up:
 
-`APP_NAME`: Name of the application (used for PM2).
-`BACKEND_ENDPOINT`: URL of the backend endpoint (if no SSL certificate, use http without a trailing slash).
-`FOLDER_PROJECT`: Name of the folder that will be cloned on the server (e.g., frontend).
-`GH_TOKEN`: GitHub token with repository read permissions (manually generated).
-`HOST`: Domain or IP address of the server, without protocol or trailing slash (e.g., EC2 instance).
-`SSH_KEY`: SSH key pair generated for the EC2 instance to enable SSH connection and deployment.
-`USERNAME`: Username for logging in to the instance.
+`APP_NAME`: Name of the application (used for PM2).\
+`BACKEND_ENDPOINT`: URL of the backend endpoint (if no SSL certificate, use http without a trailing slash).\
+`FOLDER_PROJECT`: Name of the folder that will be cloned on the server (e.g., frontend).\
+`GH_TOKEN`: GitHub token with repository read permissions (manually generated).\
+`HOST`: Domain or IP address of the server, without protocol or trailing slash (e.g., EC2 instance).\
+`SSH_KEY`: SSH key pair generated for the EC2 instance to enable SSH connection and deployment.\
+`USERNAME`: Username for logging in to the instance.\
 After setting up these secrets, you can push changes to the repository. The application will be automatically deployed to the EC2 instance created with the CloudFormation template. Make sure to establish a proper relationship between the repository and the EC2 instance.
 
 Please note that this application is deployed on an EC2 instance created using the CloudFormation template.
